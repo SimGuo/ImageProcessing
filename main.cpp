@@ -14,23 +14,6 @@ const string RootPath = "F://Current/MachineLearning/imagedata";
 string ClassPath[19] = { "/car", "/city", "/dog", "/earth", "/fireworks", "/flowers", "/fruits",
 "/glass", "/gold", "/gun", "/goldenfish", "/shoe", "/teapot", "/bear", "/dragonfly", "/football", "/plane", "/sky", "/worldcup" };
 
-void dir(string path)
-{
-	long hFile = 0;
-	struct _finddata_t fileInfo;
-	string pathName, exdName;
-
-	if ((hFile = _findfirst(pathName.assign(path).append("\\*").c_str(), &fileInfo)) == -1) {
-		return;
-	}
-	do {
-		cout << fileInfo.name << endl;
-	} while (_findnext(hFile, &fileInfo) == 0);
-	_findclose(hFile);
-	return;
-}
-
-
 int WriteData(string fileName, cv::Mat& matData) {
 	
 	int retVal = 0;
