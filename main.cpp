@@ -20,7 +20,7 @@ double PresetLabels[5][19] = {
 	{ 1.0, -1.0, 1.0, -1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0} };
 string ClassPath[19] = { "/car", "/city", "/dog", "/earth", "/fireworks", "/flowers", "/fruits",
 "/glass", "/gold", "/gun", "/goldenfish", "/shoe", "/teapot", "/bear", "/dragonfly", "/football", "/plane", "/sky", "/worldcup" };
-int wordCount = 10; //生成多少个单词
+int wordCount = 30; //生成多少个单词
 CvSVM mySVM[5];
 
 
@@ -51,10 +51,8 @@ int WriteData(string fileName, cv::Mat& matData) {
 	}
 
 	// 写入数据  
-	for (int r = 0; r < matData.rows; r++)
-	{
-		for (int c = 0; c < matData.cols; c++)
-		{
+	for (int r = 0; r < matData.rows; r++){
+		for (int c = 0; c < matData.cols; c++){
 			int data = matData.at<int>(r, c);    //读取数据，at<type> - type 是矩阵元素的具体数据格式  
 			outFile << data << ",";   //每列数据用,隔开
 		}
@@ -65,7 +63,6 @@ int WriteData(string fileName, cv::Mat& matData) {
 }
 int Myclasify(String filename){
 	cout << filename << " responce: ";
-	return 0;
 	Mat tmp_image = imread(filename), tmp_bowdescriptor;
 	SiftFeatureDetector siftdtc;
 	vector<KeyPoint> tmp_keypoint;
@@ -73,10 +70,11 @@ int Myclasify(String filename){
 	bowextract.compute(tmp_image, tmp_keypoint, tmp_bowdescriptor);
 	normalize(tmp_bowdescriptor, tmp_bowdescriptor, 1.0, 0.0, NORM_MINMAX);
 	for (int i = 3; i < 5; i++){
-		int response = (int)mySVM[i].predict(tmp_bowdescriptor);
+		float response = mySVM[i].predict(tmp_bowdescriptor);
 		cout << response << " ";
 	}
 	cout << endl;
+	return 0;
 }
 
 
@@ -99,7 +97,7 @@ int main(int argc, char* argv[]){
 	 *	此处SIFT未经过筛选
 	 *
 	 */
-	for (int i = 0; i < 3; i++){
+	for (int i = 0; i < 19; i++){
 		String TmpPath = RootPath + ClassPath[i];
 		long hFile = 0;
 		struct _finddata_t fileInfo;
@@ -162,7 +160,7 @@ int main(int argc, char* argv[]){
 	map<int, Mat> train_features;
 	bowextract.setVocabulary(vocabulary);
 	//对每幅图生成一个向量
-	for (int i = 0; i < 3; i++){
+	for (int i = 0; i < 19; i++){
 		long hFile = 0;
 		string pathName, exdName;
 		struct _finddata_t fileInfo;
@@ -189,6 +187,14 @@ int main(int argc, char* argv[]){
 			}
 			//归一化  
 			normalize(tmp_bowdescriptor, tmp_bowdescriptor, 1.0, 0.0, NORM_MINMAX);
+			//写入文件
+			for (int r = 0; r < tmp_bowdescriptor.rows; r++){
+				for (int c = 0; c < tmp_bowdescriptor.cols; c++){
+					int data = tmp_bowdescriptor.at<int>(r, c);    //读取数据，at<type> - type 是矩阵元素的具体数据格式  
+					tmpout << data << ",";   //每列数据用,隔开
+				}
+				tmpout << endl;  //换行  
+			}
 			train_features[i].push_back(tmp_bowdescriptor); //train_features准备训练数据
 		} while (_findnext(hFile, &fileInfo) == 0);
 		_findclose(hFile);
@@ -208,7 +214,7 @@ int main(int argc, char* argv[]){
 	params.term_crit = cvTermCriteria(CV_TERMCRIT_ITER, 100, 1e-6);
 	//训练五个svm分类器
 	for (int i = 0; i < 5; i++){
-		Mat trainingDataMat(0, train_features.at(i).cols, train_features.at(i).type());
+		Mat trainingDataMat(0, train_features.at(0).cols, train_features.at(0).type());
 		Mat responses(0, 1, CV_32SC1);
 
 		for (auto itr = train_features.begin(); itr != train_features.end(); ++itr){
