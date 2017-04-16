@@ -13,11 +13,11 @@
 
 *parameters & function:*
 
-`mySVM[5]:` 设置了五层分类器
+  - `mySVM[5]:` 设置了五层分类器
 
-`PresetLabels:`我假想的SVM是个二叉树形的判别器，所以为每个节点预设了被五层判别器被判别的结果
+  - `PresetLabels:`我假想的SVM是个二叉树形的判别器，所以为每个节点预设了被五层判别器被判别的结果
 
-`WriteData:` 将Mat数据写入相应文件
+  - `WriteData:` 将Mat数据写入相应文件
 
 
 
