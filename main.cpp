@@ -10,8 +10,8 @@ using namespace std;
 using namespace cv;
 
 
-const string RootPath = "C://Users/Lenovo/Desktop/images/training";
-//const string RootPath = "F://Current/MachineLearning/imagedata";
+//const string RootPath = "C://Users/Lenovo/Desktop/images/training";  //简化的训练集
+const string RootPath = "F://Current/MachineLearning/imagedata";
 double PresetLabels[5][19] = {
 	{ 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0 },
 	{ 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0 },
@@ -30,12 +30,10 @@ BOWImgDescriptorExtractor bowextract(extractor, matcher);
 
 
 int WriteData(string fileName, cv::Mat& matData) {
-	
 	int retVal = 0;
 
 	// 检查矩阵是否为空  
-	if (matData.empty())
-	{
+	if (matData.empty()){
 		cout << "矩阵为空" << endl;
 		retVal = 1;
 		return (retVal);
@@ -43,8 +41,7 @@ int WriteData(string fileName, cv::Mat& matData) {
 
 	// 打开文件  
 	ofstream outFile(fileName.c_str(), ios_base::out);  //按新建或覆盖方式写入  
-	if (!outFile.is_open())
-	{
+	if (!outFile.is_open()){
 		cout << "打开文件失败" << endl;
 		retVal = -1;
 		return (retVal);
@@ -117,12 +114,8 @@ int main(int argc, char* argv[]){
 			siftextract.compute(tmp_image, tmp_keypoint, tmp_descriptor);
 			allDescriptors.push_back(tmp_descriptor);
 
-			//  vconcat（B,C,A）; // 等同于A=[B ;C]
-			//	hconcat（B,C,A）; // 等同于A=[B  C]
-
-			
 			/*
-				//写入文件
+			//将SIFT特征写入文件
 			char filename[30];
 			_splitpath(fileInfo.name, NULL, NULL, filename, NULL);
 			String outPath;
@@ -191,9 +184,9 @@ int main(int argc, char* argv[]){
 			for (int r = 0; r < tmp_bowdescriptor.rows; r++){
 				for (int c = 0; c < tmp_bowdescriptor.cols; c++){
 					int data = tmp_bowdescriptor.at<int>(r, c);    //读取数据，at<type> - type 是矩阵元素的具体数据格式  
-					tmpout << data << ",";   //每列数据用,隔开
+					tmpout << data << ",";   
 				}
-				tmpout << endl;  //换行  
+				tmpout << endl;
 			}
 			train_features[i].push_back(tmp_bowdescriptor); //train_features准备训练数据
 		} while (_findnext(hFile, &fileInfo) == 0);
@@ -202,7 +195,6 @@ int main(int argc, char* argv[]){
 	
 		
 		
-
 	/*
 	 *	训练分类器
 	 *	设置特征和对应标签
@@ -228,11 +220,8 @@ int main(int argc, char* argv[]){
 				responses.push_back(response);
 			}
 		}
-		if (i < 3) continue;
+		//if (i < 3) continue;
 		mySVM[i].train(trainingDataMat, responses, Mat(), Mat(), params);
-		//存储svm
-		//string svm_filename = string(DATA_FOLDER) + category_name[i] + string("SVM.xml");
-		//stor_svms[i].save(svm_filename.c_str());
 	}
 
 
@@ -242,7 +231,7 @@ int main(int argc, char* argv[]){
 	 */
 	//转化得到一个向量
 	String testImgPath;
-	String testRootPath = "C://Users/Lenovo/Desktop/images/testing";
+	String testRootPath = "C://Users/Lenovo/Desktop/images/testing"; //每种挑了8张的测试集
 	for (int i = 0; i < 3; i++){
 		int cntRight = 0;
 		
