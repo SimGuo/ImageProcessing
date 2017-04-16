@@ -12,10 +12,22 @@ using namespace cv;
 
 const string RootPath = "C://Users/Lenovo/Desktop/images/training";
 //const string RootPath = "F://Current/MachineLearning/imagedata";
-
+double PresetLabels[5][19] = {
+	{ 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0 },
+	{ 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0 },
+	{ 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, 1.0, 1.0, -1.0, -1.0, 1.0, 1.0, -1.0, -1.0, 1.0, 1.0, -1.0, -1.0},
+	{ 1.0, 1.0, -1.0, -1.0, 1.0, 1.0, -1.0, 1.0, -1.0, 1.0, -1.0, 1.0, -1.0, 1.0, -1.0, 1.0, -1.0, 1.0, -1.0},
+	{ 1.0, -1.0, 1.0, -1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0} };
 string ClassPath[19] = { "/car", "/city", "/dog", "/earth", "/fireworks", "/flowers", "/fruits",
 "/glass", "/gold", "/gun", "/goldenfish", "/shoe", "/teapot", "/bear", "/dragonfly", "/football", "/plane", "/sky", "/worldcup" };
-int wordCount = 90; //生成多少个单词
+int wordCount = 10; //生成多少个单词
+CvSVM mySVM[5];
+
+
+Ptr<DescriptorExtractor> extractor = DescriptorExtractor::create("SIFT");
+Ptr<DescriptorMatcher> matcher = DescriptorMatcher::create("BruteForce");
+BOWImgDescriptorExtractor bowextract(extractor, matcher);
+
 
 int WriteData(string fileName, cv::Mat& matData) {
 	
@@ -51,6 +63,21 @@ int WriteData(string fileName, cv::Mat& matData) {
 
 	return (retVal);
 }
+int Myclasify(String filename){
+	cout << filename << " responce: ";
+	return 0;
+	Mat tmp_image = imread(filename), tmp_bowdescriptor;
+	SiftFeatureDetector siftdtc;
+	vector<KeyPoint> tmp_keypoint;
+	siftdtc.detect(tmp_image, tmp_keypoint);
+	bowextract.compute(tmp_image, tmp_keypoint, tmp_bowdescriptor);
+	normalize(tmp_bowdescriptor, tmp_bowdescriptor, 1.0, 0.0, NORM_MINMAX);
+	for (int i = 3; i < 5; i++){
+		int response = (int)mySVM[i].predict(tmp_bowdescriptor);
+		cout << response << " ";
+	}
+	cout << endl;
+}
 
 
 int main(int argc, char* argv[]){
@@ -72,7 +99,7 @@ int main(int argc, char* argv[]){
 	 *	此处SIFT未经过筛选
 	 *
 	 */
-	for (int i = 0; i < 19; i++){
+	for (int i = 0; i < 3; i++){
 		String TmpPath = RootPath + ClassPath[i];
 		long hFile = 0;
 		struct _finddata_t fileInfo;
@@ -128,19 +155,20 @@ int main(int argc, char* argv[]){
 	 *	维数为wordCount维
 	 *	用map分类
 	 *	此段功能：准备训练数据在train_features中
+	 *	
+	 *
 	 */
 	//定义好bow特征提取和词汇本
 	map<int, Mat> train_features;
-	Ptr<DescriptorExtractor> extractor = DescriptorExtractor::create("SIFT");
-	Ptr<DescriptorMatcher> matcher = DescriptorMatcher::create("BruteForce");
-	BOWImgDescriptorExtractor bowextract(extractor, matcher);
 	bowextract.setVocabulary(vocabulary);
 	//对每幅图生成一个向量
-	for (int i = 0; i < 19; i++){
-		String TmpPath = RootPath + ClassPath[i];
+	for (int i = 0; i < 3; i++){
 		long hFile = 0;
-		struct _finddata_t fileInfo;
 		string pathName, exdName;
+		struct _finddata_t fileInfo;
+		String tmpname = to_string(i);
+		ofstream tmpout(tmpname + ".txt");
+		String TmpPath = RootPath + ClassPath[i];
 		if ((hFile = _findfirst(pathName.assign(TmpPath).append("\\*").c_str(), &fileInfo)) == -1) {
 			return 0;
 		}
@@ -151,19 +179,91 @@ int main(int argc, char* argv[]){
 			siftdtc.detect(tmp_image, tmp_keypoint);
 			Mat tmp_bowdescriptor;
 			bowextract.compute(tmp_image, tmp_keypoint, tmp_bowdescriptor);//tmp_descriptor就是每张图的bow直方图表示
+			normalize(tmp_bowdescriptor, tmp_bowdescriptor, 1.0, 0.0, NORM_MINMAX);
+			for (int r = 0; r < tmp_bowdescriptor.rows; r++){
+				for (int c = 0; c < tmp_bowdescriptor.cols; c++){
+					int data = tmp_bowdescriptor.at<int>(r, c);
+					tmpout << data << ",";
+				}
+				tmpout << endl;  //换行  
+			}
 			//归一化  
-			//normalize(BOWdescriptor, BOWdescriptor, 1.0, 0.0, NORM_MINMAX);
+			normalize(tmp_bowdescriptor, tmp_bowdescriptor, 1.0, 0.0, NORM_MINMAX);
 			train_features[i].push_back(tmp_bowdescriptor); //train_features准备训练数据
 		} while (_findnext(hFile, &fileInfo) == 0);
 		_findclose(hFile);
 	}
-
+	
+		
+		
 
 	/*
 	 *	训练分类器
+	 *	设置特征和对应标签
+	 *	设置支持向量机的参数（Set up SVM's parameters）
 	 */
+	CvSVMParams params;
+	params.svm_type = CvSVM::C_SVC;
+	params.kernel_type = CvSVM::RBF;
+	params.term_crit = cvTermCriteria(CV_TERMCRIT_ITER, 100, 1e-6);
+	//训练五个svm分类器
+	for (int i = 0; i < 5; i++){
+		Mat trainingDataMat(0, train_features.at(i).cols, train_features.at(i).type());
+		Mat responses(0, 1, CV_32SC1);
+
+		for (auto itr = train_features.begin(); itr != train_features.end(); ++itr){
+			trainingDataMat.push_back(itr->second);
+			if (PresetLabels[i][itr->first] == 1.0){
+				Mat response(itr->second.rows, 1, CV_32SC1, Scalar::all(1.0));
+				responses.push_back(response);
+			}
+			else{
+				Mat response(itr->second.rows, 1, CV_32SC1, Scalar::all(-1.0));
+				responses.push_back(response);
+			}
+		}
+		if (i < 3) continue;
+		mySVM[i].train(trainingDataMat, responses, Mat(), Mat(), params);
+		//存储svm
+		//string svm_filename = string(DATA_FOLDER) + category_name[i] + string("SVM.xml");
+		//stor_svms[i].save(svm_filename.c_str());
+	}
 
 
+	/*
+	 *	test部分
+	 *	用SVM对测试集进行分类
+	 */
+	//转化得到一个向量
+	String testImgPath;
+	String testRootPath = "C://Users/Lenovo/Desktop/images/testing";
+	for (int i = 0; i < 3; i++){
+		int cntRight = 0;
+		
+		testImgPath = testRootPath + ClassPath[i] + "_0000.jpg"; 
+		Myclasify(testImgPath);
+
+		testImgPath = testRootPath + ClassPath[i] + "_0001.jpg";
+		Myclasify(testImgPath);
+		
+		testImgPath = testRootPath + ClassPath[i] + "_0002.jpg";
+		Myclasify(testImgPath);
+		
+		testImgPath = testRootPath + ClassPath[i] + "_0003.jpg";
+		Myclasify(testImgPath);
+		
+		testImgPath = testRootPath + ClassPath[i] + "_0004.jpg";
+		Myclasify(testImgPath);
+		
+		testImgPath = testRootPath + ClassPath[i] + "_0005.jpg";
+		Myclasify(testImgPath);
+		
+		testImgPath = testRootPath + ClassPath[i] + "_0006.jpg";
+		Myclasify(testImgPath);
+		
+		testImgPath = testRootPath + ClassPath[i] + "_0007.jpg";
+		Myclasify(testImgPath);
+	}
 
 	/*	OpenCV提供了 两种Matching方式 ：
 		Brute-force matcher (cv::BruteForceMatcher)
