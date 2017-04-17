@@ -22,9 +22,18 @@ string ClassPath[19] = { "/car", "/city", "/dog", "/earth", "/fireworks", "/flow
 "/glass", "/gold", "/gun", "/goldenfish", "/shoe", "/teapot", "/bear", "/dragonfly", "/football", "/plane", "/sky", "/worldcup" };
 int wordCount = 30; //生成多少个单词
 CvSVM mySVM[5];
+/*
+*	SIFT、SURF特征探测器
+*	SIFT特征和SURF提取成向量的结构
+*	allDescriptors中是所有的图片对应的sift特征的并集
+*/
+SiftFeatureDetector  siftdtc;
+SurfFeatureDetector surfdtc;
+SiftDescriptorExtractor siftextract;
+SurfDescriptorExtractor surfextract;
 
 
-Ptr<DescriptorExtractor> extractor = DescriptorExtractor::create("SIFT");
+Ptr<DescriptorExtractor> extractor = DescriptorExtractor::create("SURF");
 Ptr<DescriptorMatcher> matcher = DescriptorMatcher::create("BruteForce");
 BOWImgDescriptorExtractor bowextract(extractor, matcher);
 
@@ -61,9 +70,9 @@ int WriteData(string fileName, cv::Mat& matData) {
 int Myclasify(String filename){
 	cout << filename << " responce: ";
 	Mat tmp_image = imread(filename), tmp_bowdescriptor;
-	SiftFeatureDetector siftdtc;
 	vector<KeyPoint> tmp_keypoint;
-	siftdtc.detect(tmp_image, tmp_keypoint);
+	//siftdtc.detect(tmp_image, tmp_keypoint);
+	surfdtc.detect(tmp_image, tmp_keypoint);
 	bowextract.compute(tmp_image, tmp_keypoint, tmp_bowdescriptor);
 	normalize(tmp_bowdescriptor, tmp_bowdescriptor, 1.0, 0.0, NORM_MINMAX);
 	for (int i = 3; i < 5; i++){
@@ -75,18 +84,8 @@ int Myclasify(String filename){
 }
 
 
-int main(int argc, char* argv[]){
-
-
-	/*
-	 *	SIFT、SURF特征探测器 
-	 *	SIFT特征和SURF提取成向量的结构
-	 *	allDescriptors中是所有的图片对应的sift特征的并集
-	 */
-	SiftFeatureDetector  siftdtc;
-	SurfFeatureDetector surfdtc;
-	SiftDescriptorExtractor siftextract;
-	SurfDescriptorExtractor surfextract;
+int main(int argc, char* argv[]){	
+	
 	Mat allDescriptors; 
 
 	/*	
@@ -108,10 +107,12 @@ int main(int argc, char* argv[]){
 			printf("%s\n", fileInfo.name);
 			vector<KeyPoint> tmp_keypoint;
 			//用探测器探测到SIFT，但keypoint只是点的位置，还没有处理成向量
-			siftdtc.detect(tmp_image, tmp_keypoint);					
+			//siftdtc.detect(tmp_image, tmp_keypoint);					
+			surfdtc.detect(tmp_image, tmp_keypoint);
 			//将对应的特征内容写入mat
 			Mat tmp_descriptor;												
-			siftextract.compute(tmp_image, tmp_keypoint, tmp_descriptor);
+			//siftextract.compute(tmp_image, tmp_keypoint, tmp_descriptor);
+			surfextract.compute(tmp_image, tmp_keypoint, tmp_descriptor);
 			allDescriptors.push_back(tmp_descriptor);
 
 			/*
@@ -167,7 +168,8 @@ int main(int argc, char* argv[]){
 			if (fileInfo.name[0] != ClassPath[i][1]) continue;
 			Mat tmp_image = imread(TmpPath + "/" + fileInfo.name);
 			vector<KeyPoint> tmp_keypoint;
-			siftdtc.detect(tmp_image, tmp_keypoint);
+			//siftdtc.detect(tmp_image, tmp_keypoint);
+			surfdtc.detect(tmp_image, tmp_keypoint);
 			Mat tmp_bowdescriptor;
 			bowextract.compute(tmp_image, tmp_keypoint, tmp_bowdescriptor);//tmp_descriptor就是每张图的bow直方图表示
 			normalize(tmp_bowdescriptor, tmp_bowdescriptor, 1.0, 0.0, NORM_MINMAX);
