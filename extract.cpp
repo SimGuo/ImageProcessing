@@ -139,9 +139,10 @@ int extractfeature_to_csv(){
 			normalize(tmp_bowdescriptor, tmp_bowdescriptor, 1.0, 0.0, NORM_MINMAX);
 			//写入文件
 			for (int r = 0; r < tmp_bowdescriptor.rows; r++){
+				tmpout << i;
 				for (int c = 0; c < tmp_bowdescriptor.cols; c++){
-					int data = tmp_bowdescriptor.at<int>(r, c);    //读取数据，at<type> - type 是矩阵元素的具体数据格式  
-					tmpout << i << "," << data << ",";
+					float data = tmp_bowdescriptor.at<float>(r, c);    //读取数据，at<type> - type 是矩阵元素的具体数据格式  
+					tmpout << "," << data;
 				}
 				tmpout << endl;
 			}
