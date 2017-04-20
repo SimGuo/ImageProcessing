@@ -11,7 +11,7 @@ using namespace cv;
 
 
 //--------BOW单词数
-int wordCount = 2000; 
+int wordCount = 4000; 
 //--------BOW分词
 TermCriteria tc(CV_TERMCRIT_ITER, 10, 0.001);
 BOWKMeansTrainer bowTrainer(wordCount, tc, 1, KMEANS_PP_CENTERS);
@@ -32,12 +32,13 @@ string ClassPath[19] = { "/car", "/city", "/dog", "/earth", "/fireworks", "/flow
 "/glass", "/gold", "/gun", "/goldenfish", "/shoe", "/teapot", "/bear", "/dragonfly", "/football", "/plane", "/sky", "/worldcup" };
 
 
-int main(){
+
+int extract_features(){
 
 	//--------读取所有图片.得到bowTrainer：所有surf特征的合集
 	cout << "extracting surf feature from the pictures....." << endl;
 	for (int i = 0; i < 19; i++){
-		String TmpPath = TrainPath + ClassPath[i];
+		String TmpPath = RootPath + ClassPath[i];
 		long hFile = 0;
 		struct _finddata_t fileInfo;
 		string pathName, exdName;
@@ -70,6 +71,7 @@ int main(){
 
 	//--------使用单词本计算新的词频,得到向量，准备好SVM的训练集training data和labels
 	cout << "extracting histograms in the form of BOW for each image " << endl;
+	ofstream tmpout("all.csv");
 	Mat labels(0, 1, CV_32FC1);
 	Mat trainingData(0, wordCount, CV_32FC1);
 	for (int i = 0; i < 19; i++){
@@ -77,7 +79,7 @@ int main(){
 		string pathName, exdName;
 		struct _finddata_t fileInfo;
 		//String tmpname = to_string(i);
-		String TmpPath = TrainPath + ClassPath[i];
+		String TmpPath = RootPath + ClassPath[i];
 		if ((hFile = _findfirst(pathName.assign(TmpPath).append("\\*").c_str(), &fileInfo)) == -1) {
 			return 0;
 		}
@@ -90,12 +92,35 @@ int main(){
 			//surfdetector.detect(tmp_image, tmp_keypoint);
 			Mat tmp_bowdescriptor;
 			bowDesExtrac.compute(tmp_image, tmp_keypoint, tmp_bowdescriptor);//tmp_descriptor就是每张图的bow直方图表示
+			for (int r = 0; r < tmp_bowdescriptor.rows; r++){
+				tmpout << i;
+				for (int c = 0; c < tmp_bowdescriptor.cols; c++){
+					float data = tmp_bowdescriptor.at<float>(r, c);    //读取数据，at<type> - type 是矩阵元素的具体数据格式  
+					tmpout << "," << data;
+				}
+				tmpout << endl;
+			}
 			if (tmp_bowdescriptor.empty()) continue;
 			trainingData.push_back(tmp_bowdescriptor);
 			labels.push_back((float)i);
 		} while (_findnext(hFile, &fileInfo) == 0);
 		_findclose(hFile);
 	}
+
+}
+
+
+
+int main(){
+
+	//--------提取特征写到文件all.csv中（在测试的时候直接读根据all.csv里面划分的测试集和训练集就可以了。
+	extract_features();
+
+
+	//--------自己把all.csv每一类划分为十份，然后读取相应的数据
+
+
+
 
 	//--------SVM训练
 	//设置参数
