@@ -72,8 +72,6 @@ int extract_features(){
 	//--------使用单词本计算新的词频,得到向量，准备好SVM的训练集training data和labels
 	cout << "extracting histograms in the form of BOW for each image " << endl;
 	ofstream tmpout("all.csv");
-	Mat labels(0, 1, CV_32FC1);
-	Mat trainingData(0, wordCount, CV_32FC1);
 	for (int i = 0; i < 19; i++){
 		long hFile = 0;
 		string pathName, exdName;
@@ -101,23 +99,106 @@ int extract_features(){
 				tmpout << endl;
 			}
 			if (tmp_bowdescriptor.empty()) continue;
-			trainingData.push_back(tmp_bowdescriptor);
-			labels.push_back((float)i);
+			//trainingData.push_back(tmp_bowdescriptor);
+			//labels.push_back((float)i);
 		} while (_findnext(hFile, &fileInfo) == 0);
 		_findclose(hFile);
 	}
 
 }
+int WriteData(string fileName, cv::Mat& matData) {
+	int retVal = 0;
 
+	// 检查矩阵是否为空  
+	if (matData.empty()){
+		cout << "矩阵为空" << endl;
+		retVal = 1;
+		return (retVal);
+	}
+
+	// 打开文件  
+	ofstream outFile(fileName.c_str(), ios_base::out);  //按新建或覆盖方式写入  
+	if (!outFile.is_open()){
+		cout << "打开文件失败" << endl;
+		retVal = -1;
+		return (retVal);
+	}
+
+	// 写入数据  
+	for (int r = 0; r < matData.rows; r++){
+		for (int c = 0; c < matData.cols; c++){
+			float data = matData.at<float>(r, c);    //读取数据，at<type> - type 是矩阵元素的具体数据格式  
+			outFile << data << ",";   //每列数据用,隔开
+		}
+		outFile << endl;  //换行  
+	}
+
+	return (retVal);
+}
 
 
 int main(){
 
+	//--------第一波运行main得到all,csv.分开是为了调试svm的参数
 	//--------提取特征写到文件all.csv中（在测试的时候直接读根据all.csv里面划分的测试集和训练集就可以了。
-	extract_features();
+	//extract_features();
 
 
+	//--------第二波运行main相应的集合.
+	//--------将all.csv里面的不同的类的数据分开成不同的测试集和训练集
+	//split_train_test();
+
+	CvMLData mlData;						
+	mlData.read_csv("all.csv");
+	mlData.set_response_idx(0);				//表示csv文件中第一行是标签
+	const CvMat* alldata = mlData.get_values();
+	Mat myallData(alldata);
+	Mat labelData = mlData.get_responses();	//得到所有的数据和相应的标签
+	/*
+	Mat ClassData[19];
+	for (int i = 0; i < 19; i++){
+		Mat Standard(0, wordCount, CV_32F);
+		ClassData[i] = Standard;
+	}
+	for (int i = 0; i < myallData.rows; i++){//ClassData里面是每个类的所有数据
+		Mat samplemat(1, wordCount, CV_32F);
+		for (int j = 0; j < wordCount; j++){
+			samplemat.at<float>(j) = myallData.at<float>(i, j + 1);
+		}
+		float label = labelData.at<float>(i);
+		int type = (int)label;
+		ClassData[type].push_back(samplemat);
+	}
+	for (int i = 0; i < 19; i++){
+		WriteData(to_string(i) + ".csv", ClassData[i]);
+	}
 	//--------自己把all.csv每一类划分为十份，然后读取相应的数据
+	*/
+
+	//对所有的数据进行划分
+	CvTrainTestSplit spl((float)0.9);				//90%作为训练集
+	mlData.set_train_test_split(&spl);		//随机分出来percent的内容作为训练样本
+	const CvMat* traindata_idx = mlData.get_train_sample_idx();
+	const CvMat* testdata_idx = mlData.get_test_sample_idx();
+	Mat mytrainDataidx(traindata_idx);
+	Mat mytestDataidx(testdata_idx);
+	//获取训练集和测试集
+	Mat mytrainData(mytrainDataidx.cols, wordCount, CV_32F);
+	Mat mytrainLabel(mytrainDataidx.cols, 1, CV_32S);
+	Mat mytestData(mytestDataidx.cols, wordCount, CV_32F);
+	Mat mytestLabel(mytestDataidx.cols, 1, CV_32S);
+	for (int i = 0; i < mytrainDataidx.cols; i++){	//写训练集
+		mytrainLabel.at<int>(i) = labelData.at<float>(mytrainDataidx.at<int>(i));
+		for (int j = 0; j < wordCount; j++){
+			mytrainData.at<float>(i, j) = myallData.at<float>(mytrainDataidx.at<int>(i), j + 1);
+		}
+	}
+	for (int i = 0; i < mytestDataidx.cols; i++){
+		mytestLabel.at<int>(i) = labelData.at<float>(mytestDataidx.at<int>(i));
+		for (int j = 0; j < wordCount; j++){
+			mytestData.at<float>(i, j) = myallData.at<float>(mytestDataidx.at<int>(i), j + 1);
+		}
+	}
 
 
 
@@ -125,55 +206,29 @@ int main(){
 	//--------SVM训练
 	//设置参数
 	CvSVMParams params;
-	params.kernel_type = CvSVM::RBF;
+	params.kernel_type = CvSVM::LINEAR;
 	params.svm_type = CvSVM::C_SVC;
 	params.gamma = 0.50625000000000009;
 	params.C = 312.50000000000000;
-	params.term_crit = cvTermCriteria(CV_TERMCRIT_ITER, 100, 0.000001);
+	params.term_crit = cvTermCriteria(CV_TERMCRIT_ITER, 1e5, 1e-7);
 	CvSVM svm;
 
 	cout << "training the SVM" << endl;
-	bool res = svm.train(trainingData, labels, Mat(), Mat(), params);
-	cout << res << endl;
+	bool res = svm.train_auto(mytrainData, mytrainLabel, Mat(), Mat(), params);
 	cout << "Processing evaluation data..." << endl;
 
-	
-	
-	
 	//--------SVM测试
-	Mat groundTruth(0, 1, CV_32FC1);
-	Mat evalData(0, wordCount, CV_32FC1);
-	int k = 0;
-	Mat results(0, 1, CV_32FC1);
-	for (int i = 0; i < 19; i++){
-		long hFile = 0;
-		string pathName, exdName;
-		struct _finddata_t fileInfo;
-		//String tmpname = to_string(i);
-		String TmpPath = TestPath + ClassPath[i];
-		if ((hFile = _findfirst(pathName.assign(TmpPath).append("\\*").c_str(), &fileInfo)) == -1) {
-			return 0;
+	int rightcnt = 0;
+	for (int i = 0; i < mytestData.rows; i++)
+	{
+		Mat samplemat(mytestData, Range(i, i + 1));
+		float response = svm.predict(samplemat, true);
+		float truelabel = mytestLabel.at<int>(i);
+		if (response == truelabel){
+			rightcnt++;
 		}
-		do {
-			if (fileInfo.name[0] != ClassPath[i][1]) continue;
-			Mat tmp_image = imread(TmpPath + "/" + fileInfo.name);
-			vector<KeyPoint> tmp_keypoint;
-			siftdetector.detect(tmp_image, tmp_keypoint);
-			//surfdetector.detect(tmp_image, tmp_keypoint);
-			Mat tmp_bowdescriptor;
-			bowDesExtrac.compute(tmp_image, tmp_keypoint, tmp_bowdescriptor);//tmp_descriptor就是每张图的bow直方图表示
-			evalData.push_back(tmp_bowdescriptor);
-			groundTruth.push_back((float)i);
-			float response = svm.predict(tmp_bowdescriptor);
-			results.push_back(response);
-		} while (_findnext(hFile, &fileInfo) == 0);
-		_findclose(hFile);
 	}
-
-
-	//calculate the number of unmatched classes 
-	double errorRate = (double)countNonZero(groundTruth - results) / evalData.rows;
-	cout << "Error rate is " << errorRate << endl;
-
+	double accurRate = 100.0 * (float)rightcnt / mytestData.rows;
+	cout << "accuracy by the opencv svm is ..." << accurRate << "%" << endl;
 	return 0;
 }
